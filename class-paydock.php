@@ -165,7 +165,15 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             }
         }
 
-        public function getOneTimeToken($uniqueVarName){
+        public function getOneTimeToken($uniqueVarName, $order_id){
+            error_log('what is order id?');
+            error_log($order_id);
+            $order = wc_get_order( $order_id );
+            error_log($order);
+            //if there is no paydock token tied to the $order_id, this function will generate one and then return it
+            //if there is a paydock token tied to the $order_id, this function will return it
+
+
             // error_log("$uniqueVarName");
             // error_log($uniqueVarName);
             $postfields = json_encode( array(
@@ -217,6 +225,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             if ( ! is_checkout() || ! $this->is_available() ) {
                 return '';
             }
+            error_log($order_id);
             // $order = wc_get_order( $order_id );
             // error_log((float)$order->get_total());
             $bodymeta = array(
@@ -266,7 +275,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         $testcheckouttoken = $res['resource']['data']['token'];
                         // error_log($testcheckoutlink);
                         // error_log($testcheckouttoken);
-                        $oneTimeToken = $this->getOneTimeToken($testcheckouttoken);
+                        $testtoken = $this->getOneTimeToken($testcheckouttoken);
                         // error_log($oneTimeToken);
                     }
 
@@ -291,7 +300,8 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 'publicKey'         => $this->public_key,
                 'gatewayId'         => $this->gateway_id,
                 'testcheckoutlink'  => $testcheckoutlink,
-                'testtoken'         => $oneTimeToken,
+                'testcheckouttoken' => $testcheckouttoken,
+                'testtoken' => $testtoken,
                 'sandbox'           => 'sandbox' == $this->mode ? true : false,
             ) );
 
@@ -341,6 +351,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * @since 1.0.0
          */
         function process_payment( $order_id ) {
+            error_log($order_id);
             error_log("paydock is selected payment method");
             error_log("paydock is selected payment method");
             error_log("paydock is selected payment method");

@@ -1,7 +1,20 @@
 var testcheckoutlink =  paydock.testcheckoutlink ;
+var testcheckouttoken =  paydock.testcheckouttoken ;
 var testtoken =  paydock.testtoken ;
 // console.log(window.location.search);
 // var partsArray = window.location.search.split('&');
+
+if (getQueryVariable('status') != false) {
+    var testtoken = makeToken(testcheckouttoken);
+}
+
+function makeToken(checkouttoken) {
+    //send amount, currency and checkouttoken off to become paydock token
+    console.log('trying ajax');
+    jQuery.ajax({url: 'https://requestb.in/1k77kgw1'});
+    console.log('tried ajax');
+    return testtoken;
+}
 
 function getQueryVariable(variable) {
     var query = window.location.search.substring(1);
@@ -24,7 +37,7 @@ function paydockFormHandler() {
     var $ccForm = jQuery( '#wc-paydock-cc-form' );
     // console.log('the form action is ' + $form.attr('action'));
 
-    if ( jQuery( '#payment_method_paydock' ).is( ':checked' ) && testtoken && (getQueryVariable('status') != false)){
+    if ( jQuery( '#payment_method_paydock' ).is( ':checked' ) && testtoken && (getQueryVariable('status') != false)) {
 
         $form.block({
             message: null,
