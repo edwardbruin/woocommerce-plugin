@@ -4,17 +4,17 @@ var testtoken =  paydock.testtoken ;
 // console.log(window.location.search);
 // var partsArray = window.location.search.split('&');
 
-if (getQueryVariable('status') != false) {
-    var testtoken = makeToken(testcheckouttoken);
-}
+// if (getQueryVariable('status') != false) {
+//     var testtoken = makeToken(testcheckouttoken);
+// }
 
-function makeToken(checkouttoken) {
-    //send amount, currency and checkouttoken off to become paydock token
-    console.log('trying ajax');
-    jQuery.ajax({url: 'https://requestb.in/1k77kgw1'});
-    console.log('tried ajax');
-    return testtoken;
-}
+// function makeToken(checkouttoken) {
+//     //send amount, currency and checkouttoken off to become paydock token
+//     console.log('trying ajax');
+//     jQuery.ajax({url: 'https://requestb.in/1k77kgw1'});
+//     console.log('tried ajax');
+//     return testtoken;
+// }
 
 function getQueryVariable(variable) {
     var query = window.location.search.substring(1);
@@ -72,7 +72,30 @@ function paydockFormHandler() {
     return false;
 }
 
+function myScript(){
+    var iframe = document.createElement('iframe');
+    var html = '<body>Foo</body>';
+    iframe.src = testcheckoutlink;
+    document.body.appendChild(iframe);
+    // console.log('iframe.contentWindow =', iframe.contentWindow);
+}
+
 jQuery( function () {
+
+    // window.onbeforeunload = function (e) {
+    //     console.log(e);
+    //     var e = e || window.event;
+
+    //     // For IE and Firefox prior to version 4
+    //     if (e) {
+    //         e.returnValue = 'Are you sure you want to leave the site?';
+    //     }
+
+    //     // For Safari
+    //     return 'Are you sure you want to leave the site?';
+    // };
+
+    // jQuery('#button_id').addEventListener("click", myScript);
 
     /* Checkout Form */
     jQuery( 'form.checkout' ).on( 'checkout_place_order_paydock', function () {
@@ -91,7 +114,7 @@ jQuery( function () {
         if (testtoken) {
             // console.log(testtoken);
             var $ccForm = jQuery( '#wc-paydock-cc-form' );
-            $ccForm.append( '<a href = ' + testcheckoutlink +'>click me for afterpay</a>' );
+            $ccForm.append( '<a target="_blank" href = ' + testcheckoutlink +'>click me for afterpay</a>' );
         } else {
             console.log("no token found");
         }

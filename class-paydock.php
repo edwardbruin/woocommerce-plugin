@@ -165,11 +165,13 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             }
         }
 
-        public function getOneTimeToken($uniqueVarName, $order_id){
-            error_log('what is order id?');
-            error_log($order_id);
-            $order = wc_get_order( $order_id );
-            error_log($order);
+        public function getOneTimeToken($uniqueVarName){
+            // error_log('what is order id?');
+            // error_log($order_id);
+            // $order = wc_get_order( $order_id );
+            // $order = WC()->order->id;
+            // error_log(WC()->order->id);
+            // error_log($order);
             //if there is no paydock token tied to the $order_id, this function will generate one and then return it
             //if there is a paydock token tied to the $order_id, this function will return it
 
@@ -225,7 +227,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             if ( ! is_checkout() || ! $this->is_available() ) {
                 return '';
             }
-            error_log($order_id);
+            // $order = (new WC_Cart)->get_cart_from_session();
+            // $order = (new WC_Order)->get_order_number();
+            // error_log('message');
+            // error_log(implode(', ', $order));
+            // error_log($order);
             // $order = wc_get_order( $order_id );
             // error_log((float)$order->get_total());
             $bodymeta = array(
@@ -351,77 +357,85 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * @since 1.0.0
          */
         function process_payment( $order_id ) {
-            error_log($order_id);
-            error_log("paydock is selected payment method");
-            error_log("paydock is selected payment method");
-            error_log("paydock is selected payment method");
-            error_log(implode(", ", $_POST));
+            // error_log($order_id);
+            // error_log("process_payment has been called");
+            // error_log("process_payment has been called");
+            // error_log("process_payment has been called");
+            // error_log($_POST['paydockToken']);
 
-            // $order = wc_get_order( $order_id );
+            $order = wc_get_order( $order_id );
 
-            // $item_name = sprintf( __( 'Order %s from %s.', WOOPAYDOCKTEXTDOMAIN ), $order->get_order_number(), urlencode( remove_accents( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) ) );
+            $item_name = sprintf( __( 'Order %s from %s.', WOOPAYDOCKTEXTDOMAIN ), $order->get_order_number(), urlencode( remove_accents( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) ) );
 
-            // try {
+            try {
 
-            //     //make sure token is set at this point
-            //     error_log($_POST);
-            //     if ( !isset( $_POST['paydockToken'] ) || empty( $_POST['paydockToken'] ) ) {
-            //         throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
-            //     }
+                //make sure token is set at this point
+                if ( !isset( $_POST['paydockToken'] ) || empty( $_POST['paydockToken'] ) ) {
+                    throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
+                }
 
-            //     $postfields = json_encode( array(
-            //         'amount'        => (float)$order->get_total(),
-            //         'currency'      => strtoupper( get_woocommerce_currency() ),
-            //         'token'         => $_POST['paydockToken'],
-            //         'reference'     => $item_name,
-            //         'description'   => $item_name,
-            //     ));
+                $postfields = json_encode( array(
+                    // 'amount'        => (float)$order->get_total(),
+                    // 'currency'      => strtoupper( get_woocommerce_currency() ),
+                    // 'reference'     => $item_name,
+                    // 'description'   => $item_name,
+                    'amount'        => '50.00',
+                    'currency'      => 'AUD',
+                    'token'         => $_POST['paydockToken'],
+                ));
 
-            //     $args = array(
-            //         'method'        => 'POST',
-            //         'timeout'       => 45,
-            //         'httpversion'   => '1.0',
-            //         'blocking'      => true,
-            //         'sslverify'     => false,
-            //         'body'          => $postfields,
-            //         'headers'       => array(
-            //             'Content-Type'      => 'application/json',
-            //             'x-user-secret-key' => $this->secret_key,
-            //         ),
-            //     );
-            //     $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
+                $args = array(
+                    'method'        => 'POST',
+                    'timeout'       => 45,
+                    'httpversion'   => '1.0',
+                    'blocking'      => true,
+                    'sslverify'     => false,
+                    'body'          => $postfields,
+                    'headers'       => array(
+                        'Content-Type'      => 'application/json',
+                        'x-user-secret-key' => $this->secret_key,
+                    ),
+                );
+                error_log('sending token');
+                $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
+                error_log('sent token');
 
-            //     if ( !empty( $result['body'] ) ) {
+                if ( !empty( $result['body'] ) ) {
+                    error_log('body token is present');
 
-            //         $res= json_decode( $result['body'], true );
+                    $res= json_decode( $result['body'], true );
 
-            //         if ( !empty( $res['resource']['type'] ) && 'charge' == $res['resource']['type'] ) {
-            //             if ( !empty( $res['resource']['data']['status'] ) && 'complete' == $res['resource']['data']['status'] ) {
+                    if ( !empty( $res['resource']['type'] ) && 'charge' == $res['resource']['type'] ) {
+                        error_log('type is present');
+                        if ( !empty( $res['resource']['data']['status'] ) && 'complete' == $res['resource']['data']['status'] ) {
+                            error_log('status is present');
 
-            //                 $order->payment_complete( $res['resource']['data']['_id'] );
+                            $order->payment_complete( $res['resource']['data']['_id'] );
 
-            //                 // Remove cart
-            //                 WC()->cart->empty_cart();
+                            // Remove cart
+                            WC()->cart->empty_cart();
 
-            //                 return array(
-            //                     'result'   => 'success',
-            //                     'redirect' => $this->get_return_url( $order )
-            //                 );
+                            return array(
+                                'result'   => 'success',
+                                'redirect' => $this->get_return_url( $order )
+                            );
 
-            //             }
+                        } else {
+                            error_log('payment failed lol');
+                        }
 
-            //         } elseif ( !empty( $res['error']['message'] ) ) {
+                    } elseif ( !empty( $res['error']['message'] ) ) {
 
-            //             throw new Exception( $res['error']['message'] );
-            //         }
-            //     }
+                        throw new Exception( $res['error']['message'] );
+                    }
+                }
 
-            //     throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
+                throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
 
-            // } catch( Exception $e ) {
+            } catch( Exception $e ) {
 
-            //     wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
-            // }
+                wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
+            }
 
             return '';
         }
