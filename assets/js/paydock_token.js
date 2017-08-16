@@ -74,8 +74,9 @@ function paydockFormHandler() {
 
 function myScript(){
     var iframe = document.createElement('iframe');
-    var html = '<body>Foo</body>';
+    // var html = '<body>Foo</body>';
     iframe.src = testcheckoutlink;
+    iframe.height = "800px";
     document.body.appendChild(iframe);
     // console.log('iframe.contentWindow =', iframe.contentWindow);
 }
@@ -114,7 +115,7 @@ jQuery( function () {
         if (testtoken) {
             // console.log(testtoken);
             var $ccForm = jQuery( '#wc-paydock-cc-form' );
-            $ccForm.append( '<a target="_blank" href = ' + testcheckoutlink +'>click me for afterpay</a>' );
+            $ccForm.append( '<a onclick="myScript(); return false">click me for afterpay</a>' );
         } else {
             console.log("no token found");
         }

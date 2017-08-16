@@ -28,7 +28,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             $this->enabled                  = $this->settings['enabled'];
             $this->title                    = trim( $this->settings['title'] );
             $this->description              = trim( $this->get_option( 'description' ) );
+            $this->testcheckouttoken        = trim( $this->settings['testcheckouttoken'] );
+            $this->testcheckoutlink         = trim( $this->settings['testcheckoutlink'] );
+            $this->testtoken                = trim( $this->settings['testtoken'] );
             $this->mode                     = $this->settings['sandbox'] == 'yes' ? 'sandbox' : 'production';
+            // $this->AP                       = $this->settings['sandbox'] == 'yes' ? 'sandbox' : 'production';
 
             if ( 'sandbox' == $this->mode )    {
                 $this->api_endpoint     = "https://api-sandbox.paydock.com/";
@@ -125,6 +129,27 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'title'       => __( 'Sandbox Gateway ID', WOOPAYDOCKTEXTDOMAIN ),
                     'type'        => 'text',
                     'description' => __( 'Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
+                    'default'     => '',
+                    'desc_tip'    => true
+                ),
+                'testcheckouttoken' => array(
+                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
+                    'type'        => 'text',
+                    'description' => __( 'testcheckouttoken Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
+                    'default'     => '',
+                    'desc_tip'    => true
+                ),
+                'testcheckoutlink' => array(
+                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
+                    'type'        => 'text',
+                    'description' => __( 'testcheckoutlink Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
+                    'default'     => '',
+                    'desc_tip'    => true
+                ),
+                'testtoken' => array(
+                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
+                    'type'        => 'text',
+                    'description' => __( 'testcheckouttoken Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
                     'default'     => '',
                     'desc_tip'    => true
                 ),
@@ -227,67 +252,72 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             if ( ! is_checkout() || ! $this->is_available() ) {
                 return '';
             }
-            // $order = (new WC_Cart)->get_cart_from_session();
-            // $order = (new WC_Order)->get_order_number();
-            // error_log('message');
-            // error_log(implode(', ', $order));
-            // error_log($order);
-            // $order = wc_get_order( $order_id );
-            // error_log((float)$order->get_total());
-            $bodymeta = array(
-                // 'amount'        => (float)$order->get_total(),
-                'amount'        => '50.00',
-                'currency'      => 'AUD',
-                'email'         => 'david.cameron@paydock.com',
-                'first_name'    => 'testFirstName',
-                'last_name'     => 'testLastName'
-            );
 
-            // $checkout_url = WC_Cart::get_checkout_url();
-            $checkout_url = (new WC_Cart)->get_checkout_url();
+            if ($_GET["status"] == "SUCCESS"){
+                error_log('token and link already generated, skipping process');
+            } else {
+                // $order = (new WC_Cart)->get_cart_from_session();
+                // $order = (new WC_Order)->get_order_number();
+                // error_log('message');
+                // error_log(implode(', ', $order));
+                // error_log($order);
+                // $order = wc_get_order( $order_id );
+                // error_log((float)$order->get_total());
+                $bodymeta = array(
+                    // 'amount'        => (float)$order->get_total(),
+                    'amount'        => '50.00',
+                    'currency'      => 'AUD',
+                    'email'         => 'david.cameron@paydock.com',
+                    'first_name'    => 'testFirstName',
+                    'last_name'     => 'testLastName'
+                );
 
-            // error_log($checkout_url);
+                // $checkout_url = WC_Cart::get_checkout_url();
+                $checkout_url = (new WC_Cart)->get_checkout_url();
 
-            $postfields = json_encode( array(
-                    'error_redirect_url'    => $checkout_url,
-                    'success_redirect_url'  => $checkout_url,
-                    'gateway_id'            => $this->gateway_id,
-                    'meta'                  => $bodymeta
-            ));
-            // error_log($postfields);
+                // error_log($checkout_url);
 
-            $args = array(
-                'method'        => 'POST',
-                'timeout'       => 45,
-                'httpversion'   => '1.0',
-                'blocking'      => true,
-                'sslverify'     => false,
-                'body'          => $postfields,
-                'headers'       => array(
-                    'Content-Type'      => 'application/json',
-                    'x-user-secret-key' => $this->secret_key,
-                ),
-            );
-            // error_log(implode(", ", $args));
+                $postfields = json_encode( array(
+                        'error_redirect_url'    => $checkout_url,
+                        'success_redirect_url'  => $checkout_url,
+                        'gateway_id'            => $this->gateway_id,
+                        'meta'                  => $bodymeta
+                ));
+                // error_log($postfields);
 
-            $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
+                $args = array(
+                    'method'        => 'POST',
+                    'timeout'       => 45,
+                    'httpversion'   => '1.0',
+                    'blocking'      => true,
+                    'sslverify'     => false,
+                    'body'          => $postfields,
+                    'headers'       => array(
+                        'Content-Type'      => 'application/json',
+                        'x-user-secret-key' => $this->secret_key,
+                    ),
+                );
+                // error_log(implode(", ", $args));
 
-            if ( !empty( $result1['body'] ) ) {
-                $res= json_decode( $result1['body'], true );
-                if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
-                    if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
+                $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
 
-                        $testcheckoutlink = $res['resource']['data']['link'];
-                        $testcheckouttoken = $res['resource']['data']['token'];
-                        // error_log($testcheckoutlink);
-                        // error_log($testcheckouttoken);
-                        $testtoken = $this->getOneTimeToken($testcheckouttoken);
-                        // error_log($oneTimeToken);
+                if ( !empty( $result1['body'] ) ) {
+                    $res= json_decode( $result1['body'], true );
+                    if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
+                        if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
+
+                            $this->testcheckoutlink = $res['resource']['data']['link'];
+                            $this->testcheckouttoken = $res['resource']['data']['token'];
+                            // error_log($testcheckoutlink);
+                            // error_log($testcheckouttoken);
+                            $this->testtoken = $this->getOneTimeToken($this->testcheckouttoken);
+                            // error_log($oneTimeToken);
+                        }
+
+                    } elseif ( !empty( $res['error']['message'] ) ) {
+
+                        throw new Exception( $res['error']['message'] );
                     }
-
-                } elseif ( !empty( $res['error']['message'] ) ) {
-
-                    throw new Exception( $res['error']['message'] );
                 }
             }
 
@@ -305,9 +335,9 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             wp_localize_script( 'paydock-token', 'paydock', array(
                 'publicKey'         => $this->public_key,
                 'gatewayId'         => $this->gateway_id,
-                'testcheckoutlink'  => $testcheckoutlink,
-                'testcheckouttoken' => $testcheckouttoken,
-                'testtoken' => $testtoken,
+                'testcheckoutlink'  => $this->testcheckoutlink,
+                'testcheckouttoken' => $this->testcheckouttoken,
+                'testtoken'         => $this->testtoken,
                 'sandbox'           => 'sandbox' == $this->mode ? true : false,
             ) );
 
