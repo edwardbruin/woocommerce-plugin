@@ -27,7 +27,7 @@ function getQueryVariable(variable) {
             return decodeURIComponent(pair[1]);
         }
     }
-    console.log('Query variable %s not found', variable);
+    // console.log('Query variable %s not found', variable);
     return false;
 }
 
@@ -50,17 +50,17 @@ function paydockFormHandler() {
         //Insert the token into the form so it gets submitted to the server
         $ccForm.append( '<input type="hidden" class="paydockToken" name="paydockToken" value="' + testtoken + '"/>' );
         
-        console.log('unbinding event');
+        // console.log('unbinding event');
         $form.unbind().submit();
 
-        console.log('submitting form');
+        // console.log('submitting form');
         $form.submit();
-        console.log('loop escaped');
+        // console.log('loop escaped');
 
         // Prevent the form from submitting
         return true;
     } else {
-        console.log('not working fam');
+        // console.log('not working fam');
         // Show the errors on the form
         jQuery( '.woocommerce-error, .paydockToken', $ccForm ).remove();
         $form.unblock();
@@ -115,7 +115,7 @@ jQuery( function () {
         if (testtoken) {
             // console.log(testtoken);
             var $ccForm = jQuery( '#wc-paydock-cc-form' );
-            $ccForm.append( '<a onclick="myScript(); return false">click me for afterpay</a>' );
+            $ccForm.append( '<a href=' + testcheckoutlink + '>click me for afterpay</a>' );
         } else {
             console.log("no token found");
         }

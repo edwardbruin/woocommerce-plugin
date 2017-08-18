@@ -103,10 +103,35 @@ if ( is_woocommerce_active() ) {
 
     }
 
+    function createSQLtable(){
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . "paydockdata";
+        
+        $charset_collate = $wpdb->get_charset_collate();
+
+        $sql = "CREATE TABLE $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+            PDtoken text NOT NULL,
+            APtoken text NOT NULL,
+            APlink text NOT NULL,
+            url varchar(55) DEFAULT '' NOT NULL,
+            PRIMARY KEY  (id)
+        ) $charset_collate;";
+
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+        dbDelta( $sql );
+
+        // add_option( 'jal_db_version', $jal_db_version ); 
+        
+    }
+
     /**
      * function to initiate plugin
      */
     function init_woopaydock() {
+        // createSQLtable();
 
         //checking for version required
         if ( ! version_compare( paydock_get_wc_version(), '2.6.0', '>=' ) ) {

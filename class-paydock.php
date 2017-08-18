@@ -28,11 +28,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             $this->enabled                  = $this->settings['enabled'];
             $this->title                    = trim( $this->settings['title'] );
             $this->description              = trim( $this->get_option( 'description' ) );
-            $this->testcheckouttoken        = trim( $this->settings['testcheckouttoken'] );
-            $this->testcheckoutlink         = trim( $this->settings['testcheckoutlink'] );
-            $this->testtoken                = trim( $this->settings['testtoken'] );
             $this->mode                     = $this->settings['sandbox'] == 'yes' ? 'sandbox' : 'production';
-            // $this->AP                       = $this->settings['sandbox'] == 'yes' ? 'sandbox' : 'production';
 
             if ( 'sandbox' == $this->mode )    {
                 $this->api_endpoint     = "https://api-sandbox.paydock.com/";
@@ -129,27 +125,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'title'       => __( 'Sandbox Gateway ID', WOOPAYDOCKTEXTDOMAIN ),
                     'type'        => 'text',
                     'description' => __( 'Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
-                    'default'     => '',
-                    'desc_tip'    => true
-                ),
-                'testcheckouttoken' => array(
-                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
-                    'type'        => 'text',
-                    'description' => __( 'testcheckouttoken Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
-                    'default'     => '',
-                    'desc_tip'    => true
-                ),
-                'testcheckoutlink' => array(
-                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
-                    'type'        => 'text',
-                    'description' => __( 'testcheckoutlink Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
-                    'default'     => '',
-                    'desc_tip'    => true
-                ),
-                'testtoken' => array(
-                    'title'       => __( 'Sandbox testcheckouttoken', WOOPAYDOCKTEXTDOMAIN ),
-                    'type'        => 'text',
-                    'description' => __( 'testcheckouttoken Obtained from your PayDock account. You can set this ID by logging into PayDock.', WOOPAYDOCKTEXTDOMAIN ),
                     'default'     => '',
                     'desc_tip'    => true
                 ),
@@ -252,28 +227,48 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             if ( ! is_checkout() || ! $this->is_available() ) {
                 return '';
             }
+            // error_log( wp_get_current_user()->user_email );
+            // error_log( WC()->cart->get_cart_id);
+            // $customer = (new WC_Session_Handler)->get_session_data();
+            
+            // error_log( WC()->cart->get_cart_total);
+            // error_log( WC()->cart->cart_contents_total);
+            
+            // error_log( WC()->cart->total);
+            // error_log( WC()->cart->subtotal);
+            // error_log( WC()->cart->tax_total);
+            // error_log( WC()->cart->taxes);
+            // error_log( WC()->cart->subtotal_ex_tax);
+            // error_log( WC()->cart->cart_contents_total);
 
-            if ($_GET["status"] == "SUCCESS"){
-                error_log('token and link already generated, skipping process');
+            global $wpdb;
+            if (isset ($_GET["order-received"])){
+                return '';
+            } else if (isset ($_GET["status"]) && $_GET["status"] == "SUCCESS"){
+                // error_log('token and link already generated, skipping process');
+                
+                // $table_name = $wpdb->prefix . "paydockdata";
+                // error_log($table_name);
+                // $updated = $wpdb->get_row( "SELECT * FROM " . $table_name );
+                // error_log("updated");
+
+                $testcheckoutlink = WC()->session->get("APlink");
+                $testcheckouttoken = WC()->session->get("APtoken");
+                $testtoken = WC()->session->get("PDtoken");
             } else {
-                // $order = (new WC_Cart)->get_cart_from_session();
-                // $order = (new WC_Order)->get_order_number();
-                // error_log('message');
-                // error_log(implode(', ', $order));
-                // error_log($order);
-                // $order = wc_get_order( $order_id );
-                // error_log((float)$order->get_total());
+                $currentuser = wp_get_current_user();
                 $bodymeta = array(
-                    // 'amount'        => (float)$order->get_total(),
-                    'amount'        => '50.00',
-                    'currency'      => 'AUD',
-                    'email'         => 'david.cameron@paydock.com',
-                    'first_name'    => 'testFirstName',
-                    'last_name'     => 'testLastName'
+                    // 'amount'        => '50.00',
+                    'amount'        => WC()->cart->subtotal,
+                    'currency'      => strtoupper( get_woocommerce_currency() ),
+                    'email'         => $currentuser->user_email,
+                    'first_name'    => $currentuser->user_firstname,
+                    'last_name'     => $currentuser->user_lastname
                 );
-
+                // error_log($bodymeta['amount']);
                 // $checkout_url = WC_Cart::get_checkout_url();
                 $checkout_url = (new WC_Cart)->get_checkout_url();
+                // error_log($checkout_url);
 
                 // error_log($checkout_url);
 
@@ -306,12 +301,16 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
                         if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
 
-                            $this->testcheckoutlink = $res['resource']['data']['link'];
-                            $this->testcheckouttoken = $res['resource']['data']['token'];
+                            $testcheckoutlink = $res['resource']['data']['link'];
+                            $testcheckouttoken = $res['resource']['data']['token'];
                             // error_log($testcheckoutlink);
                             // error_log($testcheckouttoken);
-                            $this->testtoken = $this->getOneTimeToken($this->testcheckouttoken);
+                            $testtoken = $this->getOneTimeToken($testcheckouttoken);
                             // error_log($oneTimeToken);
+
+                            WC()->session->set("PDtoken", $testtoken);
+                            WC()->session->set("APtoken", $testcheckouttoken);
+                            WC()->session->set("APlink", $testcheckoutlink);
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {
@@ -335,9 +334,9 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             wp_localize_script( 'paydock-token', 'paydock', array(
                 'publicKey'         => $this->public_key,
                 'gatewayId'         => $this->gateway_id,
-                'testcheckoutlink'  => $this->testcheckoutlink,
-                'testcheckouttoken' => $this->testcheckouttoken,
-                'testtoken'         => $this->testtoken,
+                'testcheckoutlink'  => $testcheckoutlink,
+                'testcheckouttoken' => $testcheckouttoken,
+                'testtoken'         => $testtoken,
                 'sandbox'           => 'sandbox' == $this->mode ? true : false,
             ) );
 
@@ -405,12 +404,12 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 }
 
                 $postfields = json_encode( array(
-                    // 'amount'        => (float)$order->get_total(),
-                    // 'currency'      => strtoupper( get_woocommerce_currency() ),
+                    'amount'        => (float)$order->get_total(),
+                    'currency'      => strtoupper( get_woocommerce_currency() ),
                     // 'reference'     => $item_name,
                     // 'description'   => $item_name,
-                    'amount'        => '50.00',
-                    'currency'      => 'AUD',
+                    // 'amount'        => '50.00',
+                    // 'currency'      => 'AUD',
                     'token'         => $_POST['paydockToken'],
                 ));
 
