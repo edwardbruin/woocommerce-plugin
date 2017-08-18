@@ -165,6 +165,100 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             }
         }
 
+        public function form() {
+            $testcheckoutlink = $this->getAPlinkToken();
+            ?>
+
+            <fieldset id="wc-<?php echo esc_attr( $this->id ); ?>-cc-form" class='wc-credit-card-form wc-payment-form'>
+                <a id="AP_button" href=<?php echo '"' . $testcheckoutlink . '"' ?> >click me for afterpay</a>
+                <img src=<?php echo $this->icon; ?> id="AP_button" href=<?php echo '"' . $testcheckoutlink . '"' ?> >
+                <div class="clear"></div>
+            </fieldset>
+            <?php
+        }
+
+        public function getAPlinkToken(){
+            if (isset ($_GET["status"]) && $_GET["status"] == "SUCCESS"){
+                $testcheckoutlink = WC()->session->get("APlink");
+                $testcheckouttoken = WC()->session->get("APtoken");
+                $testtoken = WC()->session->get("PDtoken");
+            } else {
+                $currentuser = wp_get_current_user();
+                $bodymeta = array(
+                    // 'amount'        => '50.00',
+                    'amount'        => WC()->cart->subtotal,
+                    'currency'      => strtoupper( get_woocommerce_currency() ),
+                    'email'         => $currentuser->user_email,
+                    'first_name'    => $currentuser->user_firstname,
+                    'last_name'     => $currentuser->user_lastname
+                );
+                // error_log($bodymeta['amount']);
+                // $checkout_url = WC_Cart::get_checkout_url();
+                $checkout_url = (new WC_Cart)->get_checkout_url();
+                // error_log($checkout_url);
+
+                // error_log($checkout_url);
+
+                $postfields = json_encode( array(
+                        'error_redirect_url'    => $checkout_url,
+                        'success_redirect_url'  => $checkout_url,
+                        'gateway_id'            => $this->gateway_id,
+                        'meta'                  => $bodymeta
+                ));
+                // error_log($postfields);
+
+                $args = array(
+                    'method'        => 'POST',
+                    'timeout'       => 45,
+                    'httpversion'   => '1.0',
+                    'blocking'      => true,
+                    'sslverify'     => false,
+                    'body'          => $postfields,
+                    'headers'       => array(
+                        'Content-Type'      => 'application/json',
+                        'x-user-secret-key' => $this->secret_key,
+                    ),
+                );
+                // error_log(implode(", ", $args));
+
+                $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
+
+                if ( !empty( $result1['body'] ) ) {
+                    $res= json_decode( $result1['body'], true );
+                    if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
+                        if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
+
+                            $testcheckoutlink = $res['resource']['data']['link'];
+                            $testcheckouttoken = $res['resource']['data']['token'];
+                            // error_log($testcheckoutlink);
+                            // error_log($testcheckouttoken);
+                            $testtoken = $this->getOneTimeToken($testcheckouttoken);
+                            // error_log($oneTimeToken);
+
+                            WC()->session->set("PDtoken", $testtoken);
+                            WC()->session->set("APtoken", $testcheckouttoken);
+                            WC()->session->set("APlink", $testcheckoutlink);
+                        }
+
+                    } elseif ( !empty( $res['error']['message'] ) ) {
+
+                        throw new Exception( $res['error']['message'] );
+                    }
+                }
+            }
+
+            wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
+            wp_localize_script( 'paydock-token', 'paydock', array(
+                'publicKey'         => $this->public_key,
+                'gatewayId'         => $this->gateway_id,
+                'testcheckoutlink'  => $testcheckoutlink,
+                'testcheckouttoken' => $testcheckouttoken,
+                'testtoken'         => $testtoken,
+                'sandbox'           => 'sandbox' == $this->mode ? true : false,
+            ) );
+            return $testcheckoutlink;
+        }
+
         public function getOneTimeToken($uniqueVarName){
             // error_log('what is order id?');
             // error_log($order_id);
@@ -241,104 +335,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             // error_log( WC()->cart->subtotal_ex_tax);
             // error_log( WC()->cart->cart_contents_total);
 
-            global $wpdb;
             if (isset ($_GET["order-received"])){
                 return '';
-            } else if (isset ($_GET["status"]) && $_GET["status"] == "SUCCESS"){
-                // error_log('token and link already generated, skipping process');
-                
-                // $table_name = $wpdb->prefix . "paydockdata";
-                // error_log($table_name);
-                // $updated = $wpdb->get_row( "SELECT * FROM " . $table_name );
-                // error_log("updated");
-
-                $testcheckoutlink = WC()->session->get("APlink");
-                $testcheckouttoken = WC()->session->get("APtoken");
-                $testtoken = WC()->session->get("PDtoken");
             } else {
-                $currentuser = wp_get_current_user();
-                $bodymeta = array(
-                    // 'amount'        => '50.00',
-                    'amount'        => WC()->cart->subtotal,
-                    'currency'      => strtoupper( get_woocommerce_currency() ),
-                    'email'         => $currentuser->user_email,
-                    'first_name'    => $currentuser->user_firstname,
-                    'last_name'     => $currentuser->user_lastname
-                );
-                // error_log($bodymeta['amount']);
-                // $checkout_url = WC_Cart::get_checkout_url();
-                $checkout_url = (new WC_Cart)->get_checkout_url();
-                // error_log($checkout_url);
-
-                // error_log($checkout_url);
-
-                $postfields = json_encode( array(
-                        'error_redirect_url'    => $checkout_url,
-                        'success_redirect_url'  => $checkout_url,
-                        'gateway_id'            => $this->gateway_id,
-                        'meta'                  => $bodymeta
-                ));
-                // error_log($postfields);
-
-                $args = array(
-                    'method'        => 'POST',
-                    'timeout'       => 45,
-                    'httpversion'   => '1.0',
-                    'blocking'      => true,
-                    'sslverify'     => false,
-                    'body'          => $postfields,
-                    'headers'       => array(
-                        'Content-Type'      => 'application/json',
-                        'x-user-secret-key' => $this->secret_key,
-                    ),
-                );
-                // error_log(implode(", ", $args));
-
-                $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
-
-                if ( !empty( $result1['body'] ) ) {
-                    $res= json_decode( $result1['body'], true );
-                    if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
-                        if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
-
-                            $testcheckoutlink = $res['resource']['data']['link'];
-                            $testcheckouttoken = $res['resource']['data']['token'];
-                            // error_log($testcheckoutlink);
-                            // error_log($testcheckouttoken);
-                            $testtoken = $this->getOneTimeToken($testcheckouttoken);
-                            // error_log($oneTimeToken);
-
-                            WC()->session->set("PDtoken", $testtoken);
-                            WC()->session->set("APtoken", $testcheckouttoken);
-                            WC()->session->set("APlink", $testcheckoutlink);
-                        }
-
-                    } elseif ( !empty( $res['error']['message'] ) ) {
-
-                        throw new Exception( $res['error']['message'] );
-                    }
-                }
+                $this->getAPlinkToken();
             }
-
-            // error_log(" ");
-            // error_log(implode(", ", $result));
-            // error_log(" ");
-            // error_log($this->api_endpoint);
-
-            // wp_enqueue_script( 'js-paydock', 'https://app.paydock.com/v1/paydock.min.js', array(), $this->js_ver, true );
-            // wp_deregister_script('jquery');
-            // wp_register_script('jquery', 'https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js', false, '3.2.1');
-            // wp_enqueue_script('jquery');
-            // wp_enqueue_script( 'jquery2', 'https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js', array(), true, true );
-            wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
-            wp_localize_script( 'paydock-token', 'paydock', array(
-                'publicKey'         => $this->public_key,
-                'gatewayId'         => $this->gateway_id,
-                'testcheckoutlink'  => $testcheckoutlink,
-                'testcheckouttoken' => $testcheckouttoken,
-                'testtoken'         => $testtoken,
-                'sandbox'           => 'sandbox' == $this->mode ? true : false,
-            ) );
 
             return '';
         }

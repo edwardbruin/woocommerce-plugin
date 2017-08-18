@@ -83,21 +83,6 @@ function myScript(){
 
 jQuery( function () {
 
-    // window.onbeforeunload = function (e) {
-    //     console.log(e);
-    //     var e = e || window.event;
-
-    //     // For IE and Firefox prior to version 4
-    //     if (e) {
-    //         e.returnValue = 'Are you sure you want to leave the site?';
-    //     }
-
-    //     // For Safari
-    //     return 'Are you sure you want to leave the site?';
-    // };
-
-    // jQuery('#button_id').addEventListener("click", myScript);
-
     /* Checkout Form */
     jQuery( 'form.checkout' ).on( 'checkout_place_order_paydock', function () {
         return paydockFormHandler();
@@ -112,13 +97,6 @@ jQuery( function () {
     /* Both Forms */
     jQuery( 'form.checkout, form#order_review' ).on( 'change', '#wc-paydock-cc-form input', function() {
         jQuery( '.paydockToken' ).remove();
-        if (testtoken) {
-            // console.log(testtoken);
-            var $ccForm = jQuery( '#wc-paydock-cc-form' );
-            $ccForm.append( '<a href=' + testcheckoutlink + '>click me for afterpay</a>' );
-        } else {
-            console.log("no token found");
-        }
     });
 
     jQuery( 'form.checkout, form#order_review' ).on( 'blur', '#wc-paydock-cc-form input', function() {
