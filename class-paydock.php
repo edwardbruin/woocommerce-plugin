@@ -16,7 +16,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             $this->method_title = 'PayDock';
             $this->id           = 'paydock';
             $this->has_fields   = true;
-            $this->icon         = WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo.png';
+            // $this->icon         = WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo.png';
 
             // Load the form fields.
             $this->init_form_fields();
@@ -166,14 +166,14 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
         }
 
         public function form() {
-            $testcheckoutlink = $this->getAPlinkToken();
-            ?>
-
-            <fieldset id="wc-<?php echo esc_attr( $this->id ); ?>-cc-form" class='wc-credit-card-form wc-payment-form'>
-                <a id="AP_button" href=<?php echo '"' . $testcheckoutlink . '"' ?> >click me for afterpay</a>
-                <img src=<?php echo $this->icon; ?> id="AP_button" href=<?php echo '"' . $testcheckoutlink . '"' ?> >
-                <div class="clear"></div>
-            </fieldset>
+            $this->getAPlinkToken();
+            ?><fieldset id="wc-<?php echo esc_attr( $this->id ); ?>-cc-form" class='wc-credit-card-form wc-payment-form'></fieldset>
+            <a id="AP_button" href=<?php echo WC()->session->get("APlink") ?> >
+                <div id=button_div style="display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
+                    <img style="float:left;" src=<?php echo WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png' ?> id="AP_button" alt="Login to your Afterpay account">
+                </div>
+            </a>
+            <div class="clear"></div>
             <?php
         }
 
@@ -185,19 +185,13 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             } else {
                 $currentuser = wp_get_current_user();
                 $bodymeta = array(
-                    // 'amount'        => '50.00',
                     'amount'        => WC()->cart->subtotal,
                     'currency'      => strtoupper( get_woocommerce_currency() ),
                     'email'         => $currentuser->user_email,
                     'first_name'    => $currentuser->user_firstname,
                     'last_name'     => $currentuser->user_lastname
                 );
-                // error_log($bodymeta['amount']);
-                // $checkout_url = WC_Cart::get_checkout_url();
                 $checkout_url = (new WC_Cart)->get_checkout_url();
-                // error_log($checkout_url);
-
-                // error_log($checkout_url);
 
                 $postfields = json_encode( array(
                         'error_redirect_url'    => $checkout_url,
@@ -205,7 +199,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         'gateway_id'            => $this->gateway_id,
                         'meta'                  => $bodymeta
                 ));
-                // error_log($postfields);
 
                 $args = array(
                     'method'        => 'POST',
@@ -219,7 +212,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         'x-user-secret-key' => $this->secret_key,
                     ),
                 );
-                // error_log(implode(", ", $args));
 
                 $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
 
@@ -230,10 +222,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
 
                             $testcheckoutlink = $res['resource']['data']['link'];
                             $testcheckouttoken = $res['resource']['data']['token'];
-                            // error_log($testcheckoutlink);
-                            // error_log($testcheckouttoken);
                             $testtoken = $this->getOneTimeToken($testcheckouttoken);
-                            // error_log($oneTimeToken);
 
                             WC()->session->set("PDtoken", $testtoken);
                             WC()->session->set("APtoken", $testcheckouttoken);
@@ -248,37 +237,15 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             }
 
             wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
-            wp_localize_script( 'paydock-token', 'paydock', array(
-                'publicKey'         => $this->public_key,
-                'gatewayId'         => $this->gateway_id,
-                'testcheckoutlink'  => $testcheckoutlink,
-                'testcheckouttoken' => $testcheckouttoken,
-                'testtoken'         => $testtoken,
-                'sandbox'           => 'sandbox' == $this->mode ? true : false,
-            ) );
-            return $testcheckoutlink;
+            return '';
         }
 
         public function getOneTimeToken($uniqueVarName){
-            // error_log('what is order id?');
-            // error_log($order_id);
-            // $order = wc_get_order( $order_id );
-            // $order = WC()->order->id;
-            // error_log(WC()->order->id);
-            // error_log($order);
-            //if there is no paydock token tied to the $order_id, this function will generate one and then return it
-            //if there is a paydock token tied to the $order_id, this function will return it
-
-
-            // error_log("$uniqueVarName");
-            // error_log($uniqueVarName);
             $postfields = json_encode( array(
                     'type'              => 'checkout_token',
                     'gateway_id'        => $this->gateway_id,
                     'checkout_token'    => $uniqueVarName
             ));
-            // error_log("$postfields");
-            // error_log($postfields);
 
             $args = array(
                 'method'        => 'POST',
@@ -292,16 +259,12 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'x-user-secret-key' => $this->secret_key,
                 ),
             );
-            // error_log(implode(", ", $args));
-            // error_log($this->api_endpoint . 'v1/payment_sources/tokens?public_key=' . $this->public_key);
             $result = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/tokens?public_key=' . $this->public_key, $args );
-            // error_log(implode(", ", $result));
             if ( !empty( $result['body'] ) ) {
                 $res= json_decode( $result['body'], true );
                 if ( !empty( $res['resource']['data'] ) && 'token' == $res['resource']['type'] ) {
 
                     $tokenToReturn = $res['resource']['data'];
-                    // error_log($tokenToReturn);
 
                 } elseif ( !empty( $res['error']['message'] ) ) {
 
@@ -318,29 +281,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * Outputs scripts used for simplify payment
          */
         public function payment_scripts() {
-            if ( ! is_checkout() || ! $this->is_available() ) {
-                return '';
-            }
-            // error_log( wp_get_current_user()->user_email );
-            // error_log( WC()->cart->get_cart_id);
-            // $customer = (new WC_Session_Handler)->get_session_data();
-            
-            // error_log( WC()->cart->get_cart_total);
-            // error_log( WC()->cart->cart_contents_total);
-            
-            // error_log( WC()->cart->total);
-            // error_log( WC()->cart->subtotal);
-            // error_log( WC()->cart->tax_total);
-            // error_log( WC()->cart->taxes);
-            // error_log( WC()->cart->subtotal_ex_tax);
-            // error_log( WC()->cart->cart_contents_total);
-
-            if (isset ($_GET["order-received"])){
-                return '';
-            } else {
-                $this->getAPlinkToken();
-            }
-
             return '';
         }
 
@@ -387,11 +327,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * @since 1.0.0
          */
         function process_payment( $order_id ) {
-            // error_log($order_id);
-            // error_log("process_payment has been called");
-            // error_log("process_payment has been called");
-            // error_log("process_payment has been called");
-            // error_log($_POST['paydockToken']);
 
             $order = wc_get_order( $order_id );
 
@@ -400,19 +335,19 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             try {
 
                 //make sure token is set at this point
-                if ( !isset( $_POST['paydockToken'] ) || empty( $_POST['paydockToken'] ) ) {
-                    throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
+                if ( !isset( $_POST['paydockToken'] ) || !( $_POST['paydockToken'] == "paymentready") ) {
+                    throw new Exception( __( 'The PayDock Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
                 }
+                $testtoken = WC()->session->get("PDtoken");
 
                 $postfields = json_encode( array(
                     'amount'        => (float)$order->get_total(),
                     'currency'      => strtoupper( get_woocommerce_currency() ),
-                    // 'reference'     => $item_name,
-                    // 'description'   => $item_name,
-                    // 'amount'        => '50.00',
-                    // 'currency'      => 'AUD',
-                    'token'         => $_POST['paydockToken'],
+                    'reference'     => $item_name,
+                    'description'   => $item_name,
+                    'token'         => $testtoken,
                 ));
+                error_log($testtoken);
 
                 $args = array(
                     'method'        => 'POST',
@@ -426,9 +361,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         'x-user-secret-key' => $this->secret_key,
                     ),
                 );
-                error_log('sending token');
                 $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
-                error_log('sent token');
 
                 if ( !empty( $result['body'] ) ) {
                     error_log('body token is present');
