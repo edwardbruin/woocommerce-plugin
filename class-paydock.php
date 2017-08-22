@@ -175,7 +175,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     $this->getAPlinkToken();
                     echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
                         <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
-                            <img style="height:" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
+                            <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
                         </div>
                     </a>');
                 } catch (Exception $e) {
