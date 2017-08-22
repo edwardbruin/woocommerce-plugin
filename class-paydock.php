@@ -166,15 +166,27 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
         }
 
         public function form() {
-            $this->getAPlinkToken();
-            ?><fieldset id="wc-<?php echo esc_attr( $this->id ); ?>-cc-form" class='wc-credit-card-form wc-payment-form'></fieldset>
-            <a id="AP_button" href=<?php echo WC()->session->get("APlink") ?> >
-                <div id=button_div style="display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
-                    <img style="float:left;" src=<?php echo WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png' ?> id="AP_button" alt="Login to your Afterpay account">
-                </div>
-            </a>
-            <div class="clear"></div>
-            <?php
+            echo('<fieldset id="wc-' . esc_attr( $this->id ) . '-cc-form" class="wc-credit-card-form wc-payment-form" style="display:none;"></fieldset>');
+
+            if ( (WC()->session->get("limitExceeded")==true) ) { 
+                $this->sendUnavailableNotice();
+            } else {
+                try {
+                    $this->getAPlinkToken();
+                    echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
+                        <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
+                            <img style="height:" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
+                        </div>
+                    </a>');
+                } catch (Exception $e) {
+                    $this->sendUnavailableNotice();
+                }
+            }
+            echo('<div class="clear"></div>');
+        }
+
+        public function sendUnavailableNotice(){
+            echo('Afterpay is not available for this transaction');
         }
 
         public function getAPlinkToken(){
@@ -237,14 +249,13 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             }
 
             wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
-            return '';
         }
 
-        public function getOneTimeToken($uniqueVarName){
+        public function getOneTimeToken($checktouttoken){
             $postfields = json_encode( array(
                     'type'              => 'checkout_token',
                     'gateway_id'        => $this->gateway_id,
-                    'checkout_token'    => $uniqueVarName
+                    'checkout_token'    => $checktouttoken
             ));
 
             $args = array(
@@ -281,6 +292,39 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * Outputs scripts used for simplify payment
          */
         public function payment_scripts() {
+            WC()->session->set("limitExceeded",  false);
+
+            $args = array(
+                'method'        => 'GET',
+                'timeout'       => 45,
+                'httpversion'   => '1.0',
+                'blocking'      => true,
+                'sslverify'     => false,
+                'headers'       => array(
+                    'Content-Type'      => 'application/json',
+                    'x-user-secret-key' => $this->secret_key,
+                ),
+            );
+
+            $result = wp_remote_post( $this->api_endpoint . 'v1/gateways/' . $this->gateway_id . '/config', $args );
+            if ( !empty( $result['body'] ) ) {
+                $res= json_decode( $result['body'], true );
+                if ( !empty( $res['resource']['data'] ) && 'configs' == $res['resource']['type'] ) {
+
+                    $maxamount = $res['resource']['data'][0]['maximumAmount']['amount'];
+                    $maxcurrency = $res['resource']['data'][0]['maximumAmount']['currency'];
+
+                } elseif ( !empty( $res['error']['message'] ) ) {
+
+                    throw new Exception( $res['error']['message'] );
+                }
+            }
+
+            if (WC()->cart->subtotal >= $maxamount) {
+
+                WC()->session->set("limitExceeded",  true);
+            }
+
             return '';
         }
 
@@ -335,8 +379,8 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             try {
 
                 //make sure token is set at this point
-                if ( !isset( $_POST['paydockToken'] ) || !( $_POST['paydockToken'] == "paymentready") ) {
-                    throw new Exception( __( 'The PayDock Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
+                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ) {
+                    throw new Exception( __( 'Unable to pay with Afterpay', WOOPAYDOCKTEXTDOMAIN ) );
                 }
                 $testtoken = WC()->session->get("PDtoken");
 
@@ -347,7 +391,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'description'   => $item_name,
                     'token'         => $testtoken,
                 ));
-                error_log($testtoken);
 
                 $args = array(
                     'method'        => 'POST',
@@ -364,14 +407,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
 
                 if ( !empty( $result['body'] ) ) {
-                    error_log('body token is present');
 
                     $res= json_decode( $result['body'], true );
 
                     if ( !empty( $res['resource']['type'] ) && 'charge' == $res['resource']['type'] ) {
-                        error_log('type is present');
                         if ( !empty( $res['resource']['data']['status'] ) && 'complete' == $res['resource']['data']['status'] ) {
-                            error_log('status is present');
 
                             $order->payment_complete( $res['resource']['data']['_id'] );
 
@@ -384,7 +424,8 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                             );
 
                         } else {
-                            error_log('payment failed lol');
+                            error_log('the payment failed for unknown reason');
+                            error_log( implode(', ', $res['resource']['data']) );
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {

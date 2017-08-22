@@ -25,12 +25,12 @@ function paydockFormHandler() {
             }
         });
 
-        $ccForm.append( '<input type="hidden" class="paydockToken" name="paydockToken" value="paymentready"/>' );
+        $ccForm.append( '<input type="hidden" class="confirmStatus" name="confirmStatus" value="paymentready"/>' );
         $form.unbind().submit();
         $form.submit();
         return true;
     } else {
-        jQuery( '.woocommerce-error, .paydockToken', $ccForm ).remove();
+        jQuery( '.woocommerce-error, .confirmStatus', $ccForm ).remove();
         $form.unblock();
         $ccForm.prepend( '<ul class="woocommerce-error"><li>No token found please refresh the page and try again</li></ul>' );
     }
@@ -52,11 +52,11 @@ jQuery( function () {
 
     /* Both Forms */
     jQuery( 'form.checkout, form#order_review' ).on( 'change', '#wc-paydock-cc-form input', function() {
-        jQuery( '.paydockToken' ).remove();
+        jQuery( '.confirmStatus' ).remove();
     });
 
     jQuery( 'form.checkout, form#order_review' ).on( 'blur', '#wc-paydock-cc-form input', function() {
-        jQuery( '.paydockToken' ).remove();
+        jQuery( '.confirmStatus' ).remove();
     });
 
 });
