@@ -242,8 +242,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {
-
-                        throw new Exception( $res['error']['message'] );
+                        throw new Exception( serialize($res['error']['message']) );
                     }
                 }
             }
@@ -425,7 +424,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
 
                         } else {
                             error_log('the payment failed for unknown reason');
-                            error_log( implode(', ', $res['resource']['data']) );
+                            // error_log( implode(', ', $res['resource']['data']) );
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {
