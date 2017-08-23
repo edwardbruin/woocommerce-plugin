@@ -370,11 +370,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             <?php
         }
 
-        // function sendPost($url, $args){
-        //     $result = wp_remote_post( $url, $args );
-        //     return $result;
-        // }
-
         /**
          * Process the payment and return the result.
          *
@@ -389,10 +384,10 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             try {
 
                 //make sure token is set at this point
-                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
-                    error_log("exception detected3");
-                    throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
-                }
+                // if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
+                //     error_log("exception detected3");
+                //     throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
+                // }
                 $testtoken = WC()->session->get("PDtoken");
 
                 $postfields = json_encode( array(
@@ -416,31 +411,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     ),
                 );
                 error_log("before post");
-                // $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
-                // $result = $this->sendPost( $this->api_endpoint . 'v1/charges', $args );
-                // $result = 
-                $result = wp_remote_post( 'http://localhost', array(
-                    'method'        => 'GET',
-                    'timeout'       => 45,
-                    'httpversion'   => '1.1',
-                    'blocking'      => true,
-                    'sslverify'     => false
-                    ) );
-                error_log( serialize($result['body']) );
-                error_log("after post");
-                if ( substr(serialize($result['body']), 2, 2) == '85') {
-                    $order->payment_complete( '123567890' );
-
-                    // Remove cart
-                    WC()->cart->empty_cart();
-
-                    return array(
-                        'result'   => 'success',
-                        'redirect' => $this->get_return_url( $order )
-                    );
-                } else {
-                    error_log("match is false");
-                }
+                $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
                 
                 if ( !empty( $result['body'] ) ) {
 
@@ -474,7 +445,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 error_log("exception caught");
                 wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
             }
-            // error_log("this is the end of the function");
 
             return '';
         }
