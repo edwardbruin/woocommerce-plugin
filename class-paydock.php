@@ -168,26 +168,28 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
         public function form() {
             echo('<fieldset id="wc-' . esc_attr( $this->id ) . '-cc-form" class="wc-credit-card-form wc-payment-form" style="display:none;"></fieldset>');
 
-            if ( (WC()->session->get("limitExceeded")==true) ) { 
+            // if ( (WC()->session->get("limitExceeded")==true) ) { 
+            //     $this->sendUnavailableNotice();
+            // } else {
+            try {
+                $this->getAPlinkToken();
+                echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
+                    <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
+                        <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
+                    </div>
+                </a>');
+            } catch (Exception $e) {
+                error_log("exception detected6");
                 $this->sendUnavailableNotice();
-            } else {
-                try {
-                    $this->getAPlinkToken();
-                    echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
-                        <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
-                            <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
-                        </div>
-                    </a>');
-                } catch (Exception $e) {
-                    $this->sendUnavailableNotice();
-                }
             }
+            // }
             echo('<div class="clear"></div>');
+            return '';
         }
 
-        public function sendUnavailableNotice(){
-            echo('Afterpay is not available for this transaction');
-        }
+        // public function sendUnavailableNotice(){
+        //     echo('Afterpay is not available for this transaction');
+        // }
 
         public function getAPlinkToken(){
             if (isset ($_GET["status"]) && $_GET["status"] == "SUCCESS"){
@@ -242,15 +244,19 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {
-                        throw new Exception( serialize($res['error']['message']) );
+                        error_log("exception detected5");
+                        throw new Exception( $res['error']['message'] );
                     }
                 }
             }
 
             wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
+            return '';
         }
 
         public function getOneTimeToken($checktouttoken){
+            $tokenToReturn = '';
+
             $postfields = json_encode( array(
                     'type'              => 'checkout_token',
                     'gateway_id'        => $this->gateway_id,
@@ -277,7 +283,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     $tokenToReturn = $res['resource']['data'];
 
                 } elseif ( !empty( $res['error']['message'] ) ) {
-
+                    error_log("exception detected4");
                     throw new Exception( $res['error']['message'] );
                 }
             }
@@ -291,38 +297,38 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * Outputs scripts used for simplify payment
          */
         public function payment_scripts() {
-            WC()->session->set("limitExceeded",  false);
+            // WC()->session->set("limitExceeded",  false);
 
-            $args = array(
-                'method'        => 'GET',
-                'timeout'       => 45,
-                'httpversion'   => '1.0',
-                'blocking'      => true,
-                'sslverify'     => false,
-                'headers'       => array(
-                    'Content-Type'      => 'application/json',
-                    'x-user-secret-key' => $this->secret_key,
-                ),
-            );
+            // $args = array(
+            //     'method'        => 'GET',
+            //     'timeout'       => 45,
+            //     'httpversion'   => '1.0',
+            //     'blocking'      => true,
+            //     'sslverify'     => false,
+            //     'headers'       => array(
+            //         'Content-Type'      => 'application/json',
+            //         'x-user-secret-key' => $this->secret_key,
+            //     ),
+            // );
 
-            $result = wp_remote_post( $this->api_endpoint . 'v1/gateways/' . $this->gateway_id . '/config', $args );
-            if ( !empty( $result['body'] ) ) {
-                $res= json_decode( $result['body'], true );
-                if ( !empty( $res['resource']['data'] ) && 'configs' == $res['resource']['type'] ) {
+            // $result = wp_remote_post( $this->api_endpoint . 'v1/gateways/' . $this->gateway_id . '/config', $args );
+            // if ( !empty( $result['body'] ) ) {
+            //     $res= json_decode( $result['body'], true );
+            //     if ( !empty( $res['resource']['data'] ) && 'configs' == $res['resource']['type'] ) {
 
-                    $maxamount = $res['resource']['data'][0]['maximumAmount']['amount'];
-                    $maxcurrency = $res['resource']['data'][0]['maximumAmount']['currency'];
+            //         $maxamount = $res['resource']['data'][0]['maximumAmount']['amount'];
+            //         $maxcurrency = $res['resource']['data'][0]['maximumAmount']['currency'];
 
-                } elseif ( !empty( $res['error']['message'] ) ) {
+            //     } elseif ( !empty( $res['error']['message'] ) ) {
 
-                    throw new Exception( $res['error']['message'] );
-                }
-            }
+            //         throw new Exception( $res['error']['message'] );
+            //     }
+            // }
 
-            if (WC()->cart->subtotal >= $maxamount) {
+            // if (WC()->cart->subtotal >= $maxamount) {
 
-                WC()->session->set("limitExceeded",  true);
-            }
+            //     WC()->session->set("limitExceeded",  true);
+            // }
 
             return '';
         }
@@ -364,6 +370,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             <?php
         }
 
+        // function sendPost($url, $args){
+        //     $result = wp_remote_post( $url, $args );
+        //     return $result;
+        // }
+
         /**
          * Process the payment and return the result.
          *
@@ -378,8 +389,9 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             try {
 
                 //make sure token is set at this point
-                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ) {
-                    throw new Exception( __( 'Unable to pay with Afterpay', WOOPAYDOCKTEXTDOMAIN ) );
+                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
+                    error_log("exception detected3");
+                    throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
                 }
                 $testtoken = WC()->session->get("PDtoken");
 
@@ -394,7 +406,7 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 $args = array(
                     'method'        => 'POST',
                     'timeout'       => 45,
-                    'httpversion'   => '1.0',
+                    'httpversion'   => '1.1',
                     'blocking'      => true,
                     'sslverify'     => false,
                     'body'          => $postfields,
@@ -403,8 +415,33 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         'x-user-secret-key' => $this->secret_key,
                     ),
                 );
-                $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
+                error_log("before post");
+                // $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
+                // $result = $this->sendPost( $this->api_endpoint . 'v1/charges', $args );
+                // $result = 
+                $result = wp_remote_post( 'http://localhost', array(
+                    'method'        => 'GET',
+                    'timeout'       => 45,
+                    'httpversion'   => '1.1',
+                    'blocking'      => true,
+                    'sslverify'     => false
+                    ) );
+                error_log( serialize($result['body']) );
+                error_log("after post");
+                if ( substr(serialize($result['body']), 2, 2) == '85') {
+                    $order->payment_complete( '123567890' );
 
+                    // Remove cart
+                    WC()->cart->empty_cart();
+
+                    return array(
+                        'result'   => 'success',
+                        'redirect' => $this->get_return_url( $order )
+                    );
+                } else {
+                    error_log("match is false");
+                }
+                
                 if ( !empty( $result['body'] ) ) {
 
                     $res= json_decode( $result['body'], true );
@@ -422,23 +459,22 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                                 'redirect' => $this->get_return_url( $order )
                             );
 
-                        } else {
-                            error_log('the payment failed for unknown reason');
-                            // error_log( implode(', ', $res['resource']['data']) );
                         }
 
                     } elseif ( !empty( $res['error']['message'] ) ) {
-
+                        error_log("exception detected2");
                         throw new Exception( $res['error']['message'] );
                     }
+                } else {
+                    error_log("exception detected1");
+                    throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
                 }
 
-                throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
-
             } catch( Exception $e ) {
-
+                error_log("exception caught");
                 wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
             }
+            // error_log("this is the end of the function");
 
             return '';
         }
