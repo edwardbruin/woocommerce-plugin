@@ -382,12 +382,12 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             $item_name = sprintf( __( 'Order %s from %s.', WOOPAYDOCKTEXTDOMAIN ), $order->get_order_number(), urlencode( remove_accents( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) ) );
 
             try {
-
-                //make sure token is set at this point
-                // if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
-                //     error_log("exception detected3");
-                //     throw new Exception( __( 'The PayDoc Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
-                // }
+                // error_log($_POST['confirmStatus']);
+                // make sure token is set at this point
+                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
+                    error_log("exception detected3");
+                    throw new Exception( __( 'The PayDock Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
+                }
                 $testtoken = WC()->session->get("PDtoken");
 
                 $postfields = json_encode( array(
@@ -410,7 +410,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                         'x-user-secret-key' => $this->secret_key,
                     ),
                 );
-                error_log("before post");
                 $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
                 
                 if ( !empty( $result['body'] ) ) {
