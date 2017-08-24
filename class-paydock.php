@@ -171,24 +171,29 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             if ( (WC()->session->get("limitExceeded")==true) ) { 
                 $this->sendUnavailableNotice();
             } else {
-            try {
-                $this->getAPlinkToken();
-                echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
-                    <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
-                        <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
-                    </div>
-                </a>');
-            } catch (Exception $e) {
-                error_log("exception detected6");
-                $this->sendUnavailableNotice();
-            }
+                try {
+                    if (is_user_logged_in()) {
+                        $this->getAPlinkToken();
+                        echo('<div>Click Afterpay to login for payment</div>');
+                        echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
+                            <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
+                                <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
+                            </div>
+                        </a>');
+                    } else {
+                        echo('<div>Afterpay is not available until you have logged in</div>');
+                    }
+                } catch (Exception $e) {
+                    error_log("exception detected6");
+                    $this->sendUnavailableNotice();
+                }
             }
             echo('<div class="clear"></div>');
             return '';
         }
 
         public function sendUnavailableNotice(){
-            echo('Afterpay is not available for this transaction');
+            echo('<div>Afterpay is not available for this transaction</div>');
         }
 
         public function getAPlinkToken(){
@@ -202,8 +207,8 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'amount'        => WC()->cart->subtotal,
                     'currency'      => strtoupper( get_woocommerce_currency() ),
                     'email'         => $currentuser->user_email,
-                    'first_name'    => $currentuser->user_firstname,
-                    'last_name'     => $currentuser->user_lastname
+                    'first_name'    => empty($currentuser->user_firstname) ? 'First_name' : $currentuser->user_firstname,
+                    'last_name'     => empty($currentuser->user_lastname) ? 'First_name' : $currentuser->user_lastname
                 );
                 $checkout_url = (new WC_Cart)->get_checkout_url();
 
@@ -227,7 +232,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     ),
                 );
 
+                wc_get_logger()->debug($currentuser->user_email);
+                wc_get_logger()->debug($currentuser->user_firstname);
+                wc_get_logger()->debug($currentuser->user_lastname);
                 $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
+                wc_get_logger()->debug($result1['body']);
 
                 if ( !empty( $result1['body'] ) ) {
                     $res= json_decode( $result1['body'], true );
