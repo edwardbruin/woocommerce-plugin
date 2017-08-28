@@ -174,12 +174,6 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 try {
                     if (is_user_logged_in()) {
                         $this->getAPlinkToken();
-                        echo('<div>Click Afterpay to login for payment</div>');
-                        echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
-                            <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
-                                <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
-                            </div>
-                        </a>');
                     } else {
                         echo('<div>Afterpay is not available until you have logged in</div>');
                     }
@@ -192,84 +186,93 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             return '';
         }
 
+        public function getAPlinkToken(){
+            if ((isset ($_GET["status"]) && $_GET["status"] == "SUCCESS") && (WC()->session->get("APtotal") == WC()->cart->total) ){
+                $this->PostApproval();
+            } else {
+                $this->PreApproval();
+            }
+
+            wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
+
+            return '';
+        }
+
         public function sendUnavailableNotice(){
             echo('<div>Afterpay is not available for this transaction</div>');
         }
 
-        public function getAPlinkToken(){
-            if (isset ($_GET["status"]) && $_GET["status"] == "SUCCESS"){
-                $testcheckoutlink = WC()->session->get("APlink");
-                $testcheckouttoken = WC()->session->get("APtoken");
-                $testtoken = WC()->session->get("PDtoken");
-            } else {
-                $currentuser = wp_get_current_user();
-                $bodymeta = array(
-                    'amount'        => WC()->cart->subtotal,
-                    'currency'      => strtoupper( get_woocommerce_currency() ),
-                    'email'         => $currentuser->user_email,
-                    'first_name'    => empty($currentuser->user_firstname) ? 'First_name' : $currentuser->user_firstname,
-                    'last_name'     => empty($currentuser->user_lastname) ? 'First_name' : $currentuser->user_lastname
-                );
-                $checkout_url = (new WC_Cart)->get_checkout_url();
-
-                $postfields = json_encode( array(
-                        'error_redirect_url'    => $checkout_url,
-                        'success_redirect_url'  => $checkout_url,
-                        'gateway_id'            => $this->gateway_id,
-                        'meta'                  => $bodymeta
-                ));
-
-                $args = array(
-                    'method'        => 'POST',
-                    'timeout'       => 45,
-                    'httpversion'   => '1.0',
-                    'blocking'      => true,
-                    'sslverify'     => false,
-                    'body'          => $postfields,
-                    'headers'       => array(
-                        'Content-Type'      => 'application/json',
-                        'x-user-secret-key' => $this->secret_key,
-                    ),
-                );
-
-                wc_get_logger()->debug($currentuser->user_email);
-                wc_get_logger()->debug($currentuser->user_firstname);
-                wc_get_logger()->debug($currentuser->user_lastname);
-                $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
-                wc_get_logger()->debug($result1['body']);
-
-                if ( !empty( $result1['body'] ) ) {
-                    $res= json_decode( $result1['body'], true );
-                    if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
-                        if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
-
-                            $testcheckoutlink = $res['resource']['data']['link'];
-                            $testcheckouttoken = $res['resource']['data']['token'];
-                            $testtoken = $this->getOneTimeToken($testcheckouttoken);
-
-                            WC()->session->set("PDtoken", $testtoken);
-                            WC()->session->set("APtoken", $testcheckouttoken);
-                            WC()->session->set("APlink", $testcheckoutlink);
-                        }
-
-                    } elseif ( !empty( $res['error']['message'] ) ) {
-                        error_log("exception detected5");
-                        throw new Exception( $res['error']['message'] );
-                    }
-                }
-            }
-
-            wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
-            return '';
+        public function PostApproval(){
+            echo('<div id="AP_message">Afterpay Approval completed</div>');
+            $this->getOneTimeToken();
         }
 
-        public function getOneTimeToken($checktouttoken){
-            $tokenToReturn = '';
+        public function PreApproval(){
+            $currentuser = wp_get_current_user();
+            $bodymeta = array(
+                'amount'        => WC()->cart->total,
+                'currency'      => strtoupper( get_woocommerce_currency() ),
+                'email'         => $currentuser->user_email,
+                'first_name'    => empty($currentuser->user_firstname) ? 'First_name' : $currentuser->user_firstname,
+                'last_name'     => empty($currentuser->user_lastname) ? 'First_name' : $currentuser->user_lastname
+            );
+            $checkout_url = (new WC_Cart)->get_checkout_url();
+
+            $postfields = json_encode( array(
+                    'error_redirect_url'    => $checkout_url,
+                    'success_redirect_url'  => $checkout_url,
+                    'gateway_id'            => $this->gateway_id,
+                    'meta'                  => $bodymeta
+            ));
+
+            $args = array(
+                'method'        => 'POST',
+                'timeout'       => 45,
+                'httpversion'   => '1.0',
+                'blocking'      => true,
+                'sslverify'     => false,
+                'body'          => $postfields,
+                'headers'       => array(
+                    'Content-Type'      => 'application/json',
+                    'x-user-secret-key' => $this->secret_key,
+                ),
+            );
+
+            $result1 = wp_remote_post( $this->api_endpoint . 'v1/payment_sources/external_checkout', $args );
+
+            if ( !empty( $result1['body'] ) ) {
+                $res= json_decode( $result1['body'], true );
+                if ( !empty( $res['resource']['data'] ) && 'payment_source' == $res['resource']['type'] ) {
+                    if ( !empty( $res['resource']['data']['link'] ) && !empty( $res['resource']['data']['token'] ) ) {
+
+                        $testcheckoutlink = $res['resource']['data']['link'];
+                        $testcheckouttoken = $res['resource']['data']['token'];
+                        
+                        WC()->session->set("APtoken", $testcheckouttoken);
+                        WC()->session->set("APlink", $testcheckoutlink);
+                        WC()->session->set("APtotal", WC()->cart->total);
+                        echo('<div id="AP_message">Click Afterpay to login for payment</div>');
+                        echo('<a id="AP_button" href= ' . WC()->session->get("APlink") . '>
+                            <div id=button_div style="vertical-align:middle;display:inline-block;padding:8px;background:rgba(225, 225, 225, .8)">
+                                <img style="max-height:unset" src=' . WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/images/logo1.png alt="Login to your Afterpay account">
+                            </div>
+                        </a>');
+                    }
+
+                } elseif ( !empty( $res['error']['message'] ) ) {
+                    error_log("exception detected5");
+                    throw new Exception( $res['error']['message'] );
+                }
+            }
+        }
+
+        public function getOneTimeToken(){
+            $token = '';
 
             $postfields = json_encode( array(
                     'type'              => 'checkout_token',
                     'gateway_id'        => $this->gateway_id,
-                    'checkout_token'    => $checktouttoken
+                    'checkout_token'    => WC()->session->get("APtoken"),
             ));
 
             $args = array(
@@ -289,14 +292,15 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                 $res= json_decode( $result['body'], true );
                 if ( !empty( $res['resource']['data'] ) && 'token' == $res['resource']['type'] ) {
 
-                    $tokenToReturn = $res['resource']['data'];
+                    $token = $res['resource']['data'];
 
                 } elseif ( !empty( $res['error']['message'] ) ) {
                     error_log("exception detected4");
                     throw new Exception( $res['error']['message'] );
                 }
             }
-            return $tokenToReturn;
+            WC()->session->set("PDtoken", $token);
+            return '';
         }
 
 
@@ -306,6 +310,15 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
          * Outputs scripts used for simplify payment
          */
         public function payment_scripts() {
+            // this snippet prints all the cart's items and prices, to be used later
+
+            // $items = WC()->cart->get_cart();
+            // foreach ($items as $item => $values) {
+            //     $_product = wc_get_product( $values['data']->get_id() );
+            //     error_log($_product->get_title() .' Quantity: '.$values['quantity']); 
+            //     $price = get_post_meta($values['product_id'] , '_price', true);
+            //     error_log("Price: ".$price);
+            // }
             WC()->session->set("limitExceeded",  false);
 
             $args = array(
@@ -388,70 +401,74 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
 
             $order = wc_get_order( $order_id );
 
-            $item_name = sprintf( __( 'Order %s from %s.', WOOPAYDOCKTEXTDOMAIN ), $order->get_order_number(), urlencode( remove_accents( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) ) );
+            if ( (float)$order->get_total() != WC()->session->get("APtotal") ) {
+                wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' The order total has changed, <a href=' . (new WC_Cart)->get_checkout_url() .'><strong>please click here and try again</strong></a>', 'error' );
+            } else {
 
-            try {
-                // error_log($_POST['confirmStatus']);
-                // make sure token is set at this point
-                if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
-                    error_log("exception detected3");
-                    throw new Exception( __( 'The PayDock Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
-                }
-                $testtoken = WC()->session->get("PDtoken");
+                $item_name = sprintf( __( 'Order %s from %s.', WOOPAYDOCKTEXTDOMAIN ), $order->get_order_number(), urlencode( remove_accents( wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) ) ) );
 
-                $postfields = json_encode( array(
-                    'amount'        => (float)$order->get_total(),
-                    'currency'      => strtoupper( get_woocommerce_currency() ),
-                    'reference'     => $item_name,
-                    'description'   => $item_name,
-                    'token'         => $testtoken,
-                ));
-
-                $args = array(
-                    'method'        => 'POST',
-                    'timeout'       => 45,
-                    'httpversion'   => '1.1',
-                    'blocking'      => true,
-                    'sslverify'     => false,
-                    'body'          => $postfields,
-                    'headers'       => array(
-                        'Content-Type'      => 'application/json',
-                        'x-user-secret-key' => $this->secret_key,
-                    ),
-                );
-                $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
-                
-                if ( !empty( $result['body'] ) ) {
-
-                    $res= json_decode( $result['body'], true );
-
-                    if ( !empty( $res['resource']['type'] ) && 'charge' == $res['resource']['type'] ) {
-                        if ( !empty( $res['resource']['data']['status'] ) && 'complete' == $res['resource']['data']['status'] ) {
-
-                            $order->payment_complete( $res['resource']['data']['_id'] );
-
-                            // Remove cart
-                            WC()->cart->empty_cart();
-
-                            return array(
-                                'result'   => 'success',
-                                'redirect' => $this->get_return_url( $order )
-                            );
-
-                        }
-
-                    } elseif ( !empty( $res['error']['message'] ) ) {
-                        error_log("exception detected2");
-                        throw new Exception( $res['error']['message'] );
+                try {
+                    // make sure token is set at this point
+                    if ( !isset( $_POST['confirmStatus'] ) || !( $_POST['confirmStatus'] == "paymentready") ){
+                        error_log("exception detected3");
+                        throw new Exception( __( 'The PayDock Token was not generated correctly. Please go back and try again.', WOOPAYDOCKTEXTDOMAIN ) );
                     }
-                } else {
-                    error_log("exception detected1");
-                    throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
-                }
+                    $testtoken = WC()->session->get("PDtoken");
 
-            } catch( Exception $e ) {
-                error_log("exception caught");
-                wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
+                    $postfields = json_encode( array(
+                        'amount'        => (float)$order->get_total(),
+                        'currency'      => strtoupper( get_woocommerce_currency() ),
+                        'reference'     => $item_name,
+                        'description'   => $item_name,
+                        'token'         => $testtoken,
+                    ));
+
+                    $args = array(
+                        'method'        => 'POST',
+                        'timeout'       => 45,
+                        'httpversion'   => '1.1',
+                        'blocking'      => true,
+                        'sslverify'     => false,
+                        'body'          => $postfields,
+                        'headers'       => array(
+                            'Content-Type'      => 'application/json',
+                            'x-user-secret-key' => $this->secret_key,
+                        ),
+                    );
+                    $result = wp_remote_post( $this->api_endpoint . 'v1/charges', $args );
+                    
+                    if ( !empty( $result['body'] ) ) {
+
+                        $res= json_decode( $result['body'], true );
+
+                        if ( !empty( $res['resource']['type'] ) && 'charge' == $res['resource']['type'] ) {
+                            if ( !empty( $res['resource']['data']['status'] ) && 'complete' == $res['resource']['data']['status'] ) {
+
+                                $order->payment_complete( $res['resource']['data']['_id'] );
+
+                                // Remove cart
+                                WC()->cart->empty_cart();
+
+                                return array(
+                                    'result'   => 'success',
+                                    'redirect' => $this->get_return_url( $order )
+                                );
+
+                            }
+
+                        } elseif ( !empty( $res['error']['message'] ) ) {
+                            error_log("exception detected2");
+                            throw new Exception( $res['error']['message'] );
+                        }
+                    } else {
+                        error_log("exception detected1");
+                        throw new Exception( __( 'Unknown error', WOOPAYDOCKTEXTDOMAIN ) );
+                    }
+
+                } catch( Exception $e ) {
+                    error_log("exception caught");
+                    wc_add_notice( __( 'Error:', WOOPAYDOCKTEXTDOMAIN ) . ' ' . $e->getMessage(), 'error' );
+                }
             }
 
             return '';

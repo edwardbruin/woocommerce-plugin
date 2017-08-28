@@ -27,6 +27,10 @@ function paydockFormHandler() {
 
         $ccForm.append( '<input type="hidden" class="confirmStatus" name="confirmStatus" value="paymentready"/>' );
         return true;
+    } else if (paydock.orderAmount != jQuery('woocommerce-Price-amount amount').innerHTML ){
+        jQuery( '.woocommerce-error, .confirmStatus', $ccForm ).remove();
+        $form.unblock();
+        console.log('error in amount');
     } else {
         jQuery( '.woocommerce-error, .confirmStatus', $ccForm ).remove();
         $form.unblock();
@@ -36,6 +40,10 @@ function paydockFormHandler() {
 }
 
 jQuery( function () {
+
+    jQuery( 'body' ).on('updated_cart_totals', function(){
+        console.log('hello');
+    });
 
     /* Checkout Form */
     jQuery( 'form.checkout' ).on( 'checkout_place_order_paydock', function () {
