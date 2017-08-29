@@ -188,9 +188,9 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
 
         public function getAPlinkToken(){
             if ((isset ($_GET["status"]) && $_GET["status"] == "SUCCESS") && (WC()->session->get("APtotal") == WC()->cart->total) ){
-                $this->PostApproval();
+                $this->PostAPLogin();
             } else {
-                $this->PreApproval();
+                $this->PreAPLogin();
             }
 
             wp_enqueue_script( 'paydock-token', WP_PLUGIN_URL . '/woocommerce-gateway-paydock/assets/js/paydock_token.js', array(), time(), true );
@@ -202,12 +202,12 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             echo('<div>Afterpay is not available for this transaction</div>');
         }
 
-        public function PostApproval(){
-            echo('<div id="AP_message">Afterpay Approval completed</div>');
+        public function PostAPLogin(){
+            echo('<div id="AP_message">Thanks for providing your Afterpay Details!</div>');
             $this->getOneTimeToken();
         }
 
-        public function PreApproval(){
+        public function PreAPLogin(){
             $currentuser = wp_get_current_user();
             $bodymeta = array(
                 'amount'        => WC()->cart->total,
