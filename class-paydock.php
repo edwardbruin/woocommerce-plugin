@@ -315,10 +315,27 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
             // $items = WC()->cart->get_cart();
             // foreach ($items as $item => $values) {
             //     $_product = wc_get_product( $values['data']->get_id() );
-            //     error_log($_product->get_title() .' Quantity: '.$values['quantity']); 
             //     $price = get_post_meta($values['product_id'] , '_price', true);
+            //     error_log($_product->get_title() .' Quantity: '.$values['quantity']); 
             //     error_log("Price: ".$price);
             // }
+
+            // this next snippet prints if a cart has a discount, to be used later.
+
+            // $isDicount = WC()->cart->has_discount();
+            // error_log("Discount: ".$isDicount);
+
+            // this next snippet prints all the cart's coupons, to be used later. can be tied to only execute if a discount is detected in the previous snippet
+
+            // $coupons = WC()->cart->get_coupons();
+            // foreach ($coupons as $coupon => $value) {
+            //     error_log(  $value->get_data()['id'] );
+            //     error_log(  $value->get_data()['code'] );
+            //     error_log(  $value->get_data()['amount'] );
+            //     error_log(  $value->get_data()['discount_type'] );
+            //     error_log(  $value->get_data()['description'] );
+            // }
+
             WC()->session->set("limitExceeded",  false);
 
             $args = array(
