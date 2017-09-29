@@ -208,13 +208,33 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
         }
 
         public function PreAPLogin(){
+
+            $itemsArray = array();
+
+            $cartItems = WC()->cart->get_cart();
+
+            foreach ($cartItems as $item => $values) {
+                $_product = wc_get_product( $values['data']->get_id() );
+                
+                $itemsArray[] = array(
+                    "name"      => $_product->get_name(),
+                    "sku"       => $values['data']->get_id(),
+                    "quantity"  => $values["quantity"],
+                    "price"     => array(
+                        "amount"    => $values["line_total"],
+                        "currency"  => strtoupper( get_woocommerce_currency() )
+                    )
+                );  
+            }
+
             $currentuser = wp_get_current_user();
             $bodymeta = array(
                 'amount'        => WC()->cart->total,
                 'currency'      => strtoupper( get_woocommerce_currency() ),
                 'email'         => $currentuser->user_email,
                 'first_name'    => empty($currentuser->user_firstname) ? 'First_name' : $currentuser->user_firstname,
-                'last_name'     => empty($currentuser->user_lastname) ? 'First_name' : $currentuser->user_lastname
+                'last_name'     => empty($currentuser->user_lastname) ? 'First_name' : $currentuser->user_lastname,
+                'items'         => $itemsArray,
             );
             $checkout_url = (new WC_Cart)->get_checkout_url();
 
@@ -273,6 +293,11 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
                     'type'              => 'checkout_token',
                     'gateway_id'        => $this->gateway_id,
                     'checkout_token'    => WC()->session->get("APtoken"),
+                    'items'       => array(
+                        'Content-Type'      => 'application/json',
+                        'x-user-secret-key' => $this->secret_key
+                    ),
+                    
             ));
 
             $args = array(
