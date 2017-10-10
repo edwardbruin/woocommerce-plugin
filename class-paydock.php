@@ -215,13 +215,13 @@ if ( !class_exists( 'WCPayDockGateway' ) ) {
 
             foreach ($cartItems as $item => $values) {
                 $_product = wc_get_product( $values['data']->get_id() );
-                
+
                 $itemsArray[] = array(
                     "name"      => $_product->get_name(),
                     "sku"       => $values['data']->get_id(),
                     "quantity"  => $values["quantity"],
                     "price"     => array(
-                        "amount"    => $values["line_total"],
+                        "amount"    => $values['data']->get_price(),
                         "currency"  => strtoupper( get_woocommerce_currency() )
                     )
                 );  
